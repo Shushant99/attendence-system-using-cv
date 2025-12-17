@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Teacher - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h5 class="card-title">Delete Teacher?</h5>
+                    <p class="card-text">
+                        Are you sure you want to delete <strong>{{ teacher.user.get_full_name }}</strong>?
+                        <br><small class="text-muted">This action cannot be undone.</small>
+                    </p>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <a href="{% url 'students:teacher_list' %}" class="btn btn-secondary me-2">Cancel</a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

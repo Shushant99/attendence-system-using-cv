@@ -1,12 +1,13 @@
+# smart_attendance/urls.py
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from accounts.views import home
+
 urlpatterns = [
-    path('', home, name='home'),
     path('admin/', admin.site.urls),
-    path('accounts/', include('accounts.urls')),
+    path('', include('accounts.urls')),  # Removed the import home
     path('students/', include('students.urls')),
     path('attendance/', include('attendance.urls')),
 ]

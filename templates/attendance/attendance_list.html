@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Records - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="fas fa-clipboard-check"></i> Attendance Records</h1>
+            <p class="text-muted">Session: <strong>{{ session.name }}</strong> | Date: <strong>{{ session.date|date:"d M Y" }}</strong></p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'attendance:session_report_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-user"></i> Student Name</th>
+                        <th><i class="fas fa-id-card"></i> Roll No</th>
+                        <th><i class="fas fa-door-open"></i> Classroom</th>
+                        <th><i class="fas fa-check"></i> Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                        <tr>
+                            <td>{{ record.student.name }}</td>
+                            <td>{{ record.student.roll_no }}</td>
+                            <td>{{ record.student.classroom.name }}</td>
+                            <td>
+                                {% if record.status == 'PRESENT' %}
+                                    <span class="badge bg-success"><i class="fas fa-check"></i> Present</span>
+                                {% else %}
+                                    <span class="badge bg-danger"><i class="fas fa-times"></i> Absent</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Summary</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h3 class="text-info">{{ records.count }}</h3>
+                                <p>Total Students</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                {% load template_filters %}
+                                <h3 class="text-success">{{ records|present_count }}</h3>
+                                <p>Present</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                {% load template_filters %}
+                                <h3 class="text-danger">{{ records|absent_count }}</h3>
+                                <p>Absent</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

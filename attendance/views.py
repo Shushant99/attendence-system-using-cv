@@ -20,25 +20,25 @@ def gen_frames(session_id):
         if not success:
             break
 
-        # recognize_from_frame now returns (student_ids, annotated_frame)
         student_ids, frame = recognize_from_frame(frame, known_encodings, known_ids)
 
         for sid in student_ids:
             student = Student.objects.get(id=sid)
-            AttendanceRecord.objects.get_or_create(
+            record, created = AttendanceRecord.objects.get_or_create(
                 session_id=session_id,
                 student=student,
                 defaults={'status': 'PRESENT'},
             )
+            if not created and record.status != 'PRESENT':
+                record.status = 'PRESENT'
+                record.save(update_fields=['status'])
 
-        ret, buffer = cv2.imencode(".jpg", frame)
+        ret, buffer = cv2.imencode('.jpg', frame)
         frame_bytes = buffer.tobytes()
         yield (
             b"--frame\r\n"
             b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
         )
-
-
 @login_required
 def start_attendance(request, classroom_id):
     classroom = get_object_or_404(ClassRoom, id=classroom_id)
@@ -53,6 +53,7 @@ def start_attendance(request, classroom_id):
             student=student,
             defaults={"status": "ABSENT"},
         )
+    print(f"[SESSION START] Session {session.id} for classroom {classroom.id}")
     return redirect("attendance:take_attendance", session_id=session.id)
 
 
