@@ -14,26 +14,16 @@ Smart attendance webapp that uses webcam-based face recognition to mark students
  Installation
 
 1. Prerequisites
-Python version (e.g. 3.10)
+Python version (e.g. 3.10)​
 
-CMake and Visual Studio Build Tools (for Windows) or conda requirement
 
-Note that dlib and face-recognition are heavy and may need extra steps.​
-
-2. Local setup
- Create virtual environment
-
-python -m venv venv
 venv\Scripts\activate  # Windows
 source venv/bin/activate  # Linux/macOS
 
  Install dependencies (pip)
 
 pip install -r requirements.txt
-Or, if recommending conda:
 
-conda env create -f environment.yml
-conda activate attend-env
 
 
 3. Database and run steps
