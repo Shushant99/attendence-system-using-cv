@@ -16,7 +16,7 @@ Smart attendance webapp that uses webcam-based face recognition to mark students
 1. Prerequisites
 Python version (e.g. 3.10)​
 
-
+create a virtual environment 
 venv\Scripts\activate  # Windows
 source venv/bin/activate  # Linux/macOS
 
