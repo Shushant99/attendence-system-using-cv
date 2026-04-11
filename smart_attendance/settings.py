@@ -89,3 +89,6 @@ MESSAGE_TAGS = {
     messages.WARNING: 'warning',
     messages.ERROR: 'danger',
 }
+
+# Logging Configuration
+from smart_attendance.logging_config import LOGGING
