@@ -8,18 +8,57 @@ from django.contrib import messages
 from .encoding_utils import create_encodings_for_student
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from accounts.permissions import admin_required, teacher_required
 
 User = get_user_model()
 
 
 @login_required
 def classroom_list(request):
-    """List all classrooms"""
-    classrooms = ClassRoom.objects.all()
+    if request.user.is_admin():
+        classrooms = ClassRoom.objects.all()
+    else:
+        # Teachers only see their assigned classrooms
+        try:
+            classrooms = request.user.teacher_profile.assigned_classrooms.all()
+        except Exception:
+            classrooms = ClassRoom.objects.none()
     return render(request, 'students/classroom_list.html', {'classrooms': classrooms})
 
+@admin_required
+def teacher_assign_classrooms(request, pk):
+    """Admin can assign/update classrooms for a teacher."""
+    teacher = get_object_or_404(Teacher, pk=pk)
+    all_classrooms = ClassRoom.objects.all()
+
+    if request.method == 'POST':
+        selected_ids = request.POST.getlist('classrooms')
+        teacher.assigned_classrooms.set(selected_ids)  # replaces old assignments
+        messages.success(request, f'Classrooms updated for {teacher.user.get_full_name() or teacher.user.username}')
+        return redirect('students:teacher_list')
+
+    context = {
+        'teacher': teacher,
+        'all_classrooms': all_classrooms,
+        'assigned_ids': list(teacher.assigned_classrooms.values_list('id', flat=True)),
+    }
+    return render(request, 'students/teacher_assign_classrooms.html', context)
 
 @login_required
+def student_list(request):
+    if request.user.is_admin():
+        students = Student.objects.all()
+    else:
+        # Teachers only see students in their assigned classrooms
+        try:
+            assigned = request.user.teacher_profile.assigned_classrooms.all()
+            students = Student.objects.filter(classroom__in=assigned)
+        except Exception:
+            students = Student.objects.none()
+    return render(request, 'students/student_list.html', {'students': students})
+
+
+@admin_required
 def classroom_create(request):
     """Create new classroom"""
     if request.method == 'POST':
@@ -33,7 +72,7 @@ def classroom_create(request):
     return render(request, 'students/classroom_form.html', {'form': form, 'title': 'Add Classroom'})
 
 
-@login_required
+@admin_required
 def classroom_update(request, pk):
     """Update classroom"""
     classroom = get_object_or_404(ClassRoom, pk=pk)
@@ -48,7 +87,7 @@ def classroom_update(request, pk):
     return render(request, 'students/classroom_form.html', {'form': form, 'title': 'Edit Classroom'})
 
 
-@login_required
+@admin_required
 def classroom_delete(request, pk):
     """Delete classroom"""
     classroom = get_object_or_404(ClassRoom, pk=pk)
@@ -66,7 +105,7 @@ def student_list(request):
     return render(request, 'students/student_list.html', {'students': students})
 
 
-@login_required
+@admin_required
 def student_create(request):
     """Create new student"""
     if request.method == 'POST':
@@ -91,7 +130,7 @@ def student_create(request):
     return render(request, 'students/student_form.html', {'form': form, 'title': 'Add Student'})
 
 
-@login_required
+@admin_required
 def student_update(request, pk):
     """Update student"""
     student = get_object_or_404(Student, pk=pk)
@@ -117,7 +156,7 @@ def student_update(request, pk):
     return render(request, 'students/student_form.html', {'form': form, 'title': 'Edit Student'})
 
 
-@login_required
+@admin_required
 def student_delete(request, pk):
     """Delete student"""
     student = get_object_or_404(Student, pk=pk)
@@ -135,7 +174,7 @@ def teacher_list(request):
     return render(request, 'students/teacher_list.html', {'teachers': teachers})
 
 
-@login_required
+@admin_required
 def teacher_create(request):
     """Add new teacher"""
     if request.method == 'POST':
@@ -158,7 +197,8 @@ def teacher_create(request):
                 first_name=first_name,
                 last_name=last_name,
             )
-
+            user.role = 'TEACHER'
+            user.save()
             # 2) Create Teacher linked to this User
             teacher = form.save(commit=False)
             teacher.user = user
@@ -175,7 +215,7 @@ def teacher_create(request):
 
     return render(request, 'students/teacher_form.html', {'form': form, 'title': 'Add New Teacher'})
 
-@login_required
+@admin_required
 def teacher_update(request, pk):
     teacher = get_object_or_404(Teacher, pk=pk)
     if request.method == 'POST':
@@ -198,7 +238,7 @@ def teacher_update(request, pk):
 
     return render(request, 'students/teacher_form.html', {'form': form, 'title': 'Edit Teacher'})
 
-@login_required
+@admin_required
 def teacher_delete(request, pk):
     """Delete teacher"""
     teacher = get_object_or_404(Teacher, pk=pk)

@@ -1,62 +1,95 @@
-{% extends 'base.html' %}
-
-{% block title %}Register - Attendance System{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}Register - Attendance System{%endblock %} {% block content %}
 <div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-6">
-            <div class="card border-0 shadow-lg">
-                <div class="card-body p-5">
-                    <div class="text-center mb-4">
-                        <i class="fas fa-user-plus fa-3x text-primary"></i>
-                        <h2 class="mt-3">Register</h2>
-                    </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="first_name" class="form-label">First Name</label>
-                                <input type="text" class="form-control" id="first_name" name="first_name" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="last_name" class="form-label">Last Name</label>
-                                <input type="text" class="form-control" id="last_name" name="last_name">
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="password_confirm" class="form-label">Confirm Password</label>
-                            <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary w-100">Register</button>
-                    </form>
-                    
-                    <hr>
-                    <p class="text-center text-muted">
-                        Already have an account? <a href="{% url 'login' %}">Login here</a>
-                    </p>
-                </div>
+  <div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-lg">
+        <div class="card-body p-5">
+          <div class="text-center mb-4">
+            <i class="fas fa-user-plus fa-3x text-primary"></i>
+            <h2 class="mt-3">Register</h2>
+          </div>
+
+          <form method="post" action="{% url 'accounts:register' %}">
+            {% csrf_token %} {% if form.non_field_errors %}
+            <div
+              class="alert alert-danger alert-dismissible fade show"
+              role="alert"
+            >
+              <i class="fas fa-exclamation-circle"></i>
+              <div>{{ form.non_field_errors }}</div>
             </div>
+            {% endif %}
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="id_first_name" class="form-label">First Name</label>
+                {{ form.first_name }} {% if form.first_name.errors %}
+                <div class="text-danger mt-2" style="font-size: 0.85rem">
+                  {{ form.first_name.errors.0 }}
+                </div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label for="id_last_name" class="form-label">Last Name</label>
+                {{ form.last_name }} {% if form.last_name.errors %}
+                <div class="text-danger mt-2" style="font-size: 0.85rem">
+                  {{ form.last_name.errors.0 }}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="id_username" class="form-label">Username</label>
+              {{ form.username }} {% if form.username.errors %}
+              <div class="text-danger mt-2" style="font-size: 0.85rem">
+                {{ form.username.errors.0 }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="id_email" class="form-label">Email</label>
+              {{ form.email }} {% if form.email.errors %}
+              <div class="text-danger mt-2" style="font-size: 0.85rem">
+                {{ form.email.errors.0 }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="id_password" class="form-label">Password</label>
+              {{ form.password }} {% if form.password.errors %}
+              <div class="text-danger mt-2" style="font-size: 0.85rem">
+                {{ form.password.errors.0 }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="id_password_confirm" class="form-label"
+                >Confirm Password</label
+              >
+              {{ form.password_confirm }} {% if form.password_confirm.errors %}
+              <div class="text-danger mt-2" style="font-size: 0.85rem">
+                {{ form.password_confirm.errors.0 }}
+              </div>
+              {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+              Register
+            </button>
+          </form>
+
+          <hr />
+          <p class="text-center text-muted">
+            Already have an account?
+            <a href="{% url 'accounts:login' %}">Login here</a>
+          </p>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

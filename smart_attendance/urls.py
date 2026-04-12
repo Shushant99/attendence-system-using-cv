@@ -7,9 +7,9 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('accounts.urls')),  # Removed the import home
-    path('students/', include('students.urls')),
-    path('attendance/', include('attendance.urls')),
+    path('', include(('accounts.urls', 'accounts'), namespace='accounts')),  # Removed the import home
+    path('students/', include(('students.urls', 'students'), namespace='students')),
+    path('attendance/', include(('attendance.urls', 'attendance'), namespace='attendance')),
 ]
 
 if settings.DEBUG:

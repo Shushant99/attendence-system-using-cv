@@ -51,6 +51,7 @@ class Teacher(models.Model):
     department = models.CharField(max_length=100)
     phone = models.CharField(max_length=15, blank=True)
     qualification = models.CharField(max_length=200, blank=True)
+    assigned_classrooms = models.ManyToManyField(ClassRoom, blank=True, related_name='teachers')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

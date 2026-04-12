@@ -1,65 +1,102 @@
-{% extends 'base.html' %}
-
-{% block title %}Attendance Reports - Attendance System{% endblock %}
-
-{% block content %}
-<div class="container">
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h1><i class="fas fa-clipboard-list"></i> Attendance Reports</h1>
-        </div>
+{% extends 'base.html' %} {% block title %}Attendance Reports - Smart Attendance
+System{% endblock %} {% block content %}
+<div class="container-main">
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1><i class="fas fa-clipboard-list"></i> Attendance Reports</h1>
+      <p class="text-muted">View attendance sessions and generate reports</p>
     </div>
+    <div style="display: flex; gap: 10px">
+      <a href="{% url 'attendance:analytics' %}" class="btn btn-secondary">
+        <i class="fas fa-chart-bar"></i> View Analytics
+      </a>
+      <a href="{% url 'attendance:export_csv' %}" class="btn btn-primary">
+        <i class="fas fa-download"></i> Export All
+      </a>
+    </div>
+  </div>
 
-    {% if sessions %}
-        <div class="card">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th><i class="fas fa-calendar"></i> Date</th>
-                            <th><i class="fas fa-clock"></i> Session</th>
-                            <th><i class="fas fa-door-open"></i> Classroom</th>
-                            <th><i class="fas fa-user"></i> Taken By</th>
-                            <th><i class="fas fa-users"></i> Students</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in sessions %}
-                            <tr>
-                                <td>{{ session.date|date:"d M Y" }}</td>
-                                <td>
-                                    {% if session.start_time %}
-                                        {{ session.start_time|time:"H:i" }}
-                                    {% else %}
-                                        <span class="badge bg-warning">In Progress</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ session.classroom.name }}</td>
-                                <td>{{ session.taken_by.get_full_name|default:session.taken_by.username }}</td>
-                                <td>{{ session.records.count }}</td>
-                                <td>
-                                    <a href="{% url 'attendance:session_report_detail' session.id %}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    {% else %}
-        <div class="card">
-            <div class="card-body empty-state">
-                <i class="fas fa-inbox"></i>
-                <h5 class="mt-3">No attendance sessions yet</h5>
-                <p class="text-muted">Go to Classrooms to start an attendance session</p>
-                <a href="{% url 'students:classroom_list' %}" class="btn btn-primary mt-3">
-                    <i class="fas fa-door-open"></i> View Classrooms
-                </a>
-            </div>
-        </div>
-    {% endif %}
+  {% if sessions %}
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th><i class="fas fa-calendar"></i> Date</th>
+            <th><i class="fas fa-clock"></i> Session</th>
+            <th><i class="fas fa-door-open"></i> Classroom</th>
+            <th><i class="fas fa-user"></i> Taken By</th>
+            <th><i class="fas fa-users"></i> Students</th>
+            <th style="text-align: center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for session in sessions %}
+          <tr>
+            <td>
+              <strong>{{ session.date|date:"d M Y" }}</strong>
+            </td>
+            <td>
+              {% if session.start_time %}
+              <span class="badge badge-success"
+                >{{ session.start_time|time:"H:i" }}</span
+              >
+              {% else %}
+              <span class="badge badge-warning"
+                ><i class="fas fa-spinner fa-spin"></i> In Progress</span
+              >
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge badge-info">{{ session.classroom.name }}</span>
+            </td>
+            <td>
+              {{
+              session.taken_by.get_full_name|default:session.taken_by.username
+              }}
+            </td>
+            <td>
+              <strong>{{ session.records.count }}</strong>
+            </td>
+            <td style="text-align: center">
+              <a
+                href="{% url 'attendance:session_report_detail' session.id %}"
+                class="btn btn-sm btn-primary"
+                title="View Details"
+              >
+                <i class="fas fa-eye"></i>
+              </a>
+              <a
+                href="{% url 'attendance:export_session_csv' session.id %}"
+                class="btn btn-sm btn-success"
+                title="Export CSV"
+              >
+                <i class="fas fa-download"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="card-body empty-state">
+      <i class="fas fa-inbox"></i>
+      <h5 class="mt-3">No Attendance Sessions Yet</h5>
+      <p class="text-muted">
+        Start taking attendance from a classroom to generate reports
+      </p>
+      <a
+        href="{% url 'students:classroom_list' %}"
+        class="btn btn-primary mt-3"
+      >
+        <i class="fas fa-door-open"></i> View Classrooms
+      </a>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

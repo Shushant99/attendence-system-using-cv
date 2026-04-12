@@ -26,6 +26,7 @@
                             <th><i class="fas fa-id-card"></i> Employee ID</th>
                             <th><i class="fas fa-briefcase"></i> Department</th>
                             <th><i class="fas fa-phone"></i> Phone</th>
+                            <th><i class="fas fa-door-open"></i> Classrooms</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -40,10 +41,20 @@
                                 <td>{{ teacher.department }}</td>
                                 <td>{{ teacher.phone }}</td>
                                 <td>
-                                    <a href="{% url 'students:teacher_update' teacher.id %}" class="btn btn-sm btn-warning">
+                                    {% for cls in teacher.assigned_classrooms.all %}
+                                        <span class="badge bg-secondary">{{ cls.name }}</span>
+                                    {% empty %}
+                                        <span class="text-muted" style="font-size:13px;">None assigned</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'students:teacher_assign_classrooms' teacher.id %}" class="btn btn-sm btn-info" title="Assign classrooms">
+                                        <i class="fas fa-chalkboard"></i>
+                                    </a>
+                                    <a href="{% url 'students:teacher_update' teacher.id %}" class="btn btn-sm btn-warning" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="{% url 'students:teacher_delete' teacher.id %}" class="btn btn-sm btn-danger">
+                                    <a href="{% url 'students:teacher_delete' teacher.id %}" class="btn btn-sm btn-danger" title="Delete">
                                         <i class="fas fa-trash"></i>
                                     </a>
                                 </td>

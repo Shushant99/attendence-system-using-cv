@@ -1,15 +1,20 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import StreamingHttpResponse, JsonResponse
+from django.http import StreamingHttpResponse, JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Count, Q
+from datetime import datetime, timedelta
 import cv2
 import logging
+import csv
+import json
 
 from students.models import ClassRoom, Student
 from .models import AttendanceSession, AttendanceRecord
 from .face_utils import load_known_faces, recognize_from_frame
+from accounts.permissions import teacher_required, admin_required, can_manage_attendance
 
 logger = logging.getLogger('attendance')
 
@@ -94,18 +99,40 @@ def gen_frames(session_id):
         logger.error(f"Error in gen_frames for session {session_id}: {e}", exc_info=True)
 
 
-@login_required
+@teacher_required
 def start_attendance(request, classroom_id):
     """Start a new attendance session."""
     try:
         classroom = get_object_or_404(ClassRoom, id=classroom_id)
 
+        # Check teacher is assigned to this classroom (skip check for admins)
+        if not request.user.is_admin():
+            try:
+                assigned = request.user.teacher_profile.assigned_classrooms.all()
+                if classroom not in assigned:
+                    messages.error(request, 'You are not assigned to this classroom.')
+                    return redirect('students:classroom_list')
+            except Exception:
+                messages.error(request, 'Teacher profile not found.')
+                return redirect('students:classroom_list')
+
+        # Check if a session already exists for today
+        today = timezone.now().date()
+        existing_session = AttendanceSession.objects.filter(
+            classroom=classroom,
+            date=today
+        ).first()
+
+        if existing_session:
+            messages.warning(request, f'A session for {classroom.name} already exists today. Resuming it.')
+            return redirect('attendance:take_attendance', session_id=existing_session.id)
+
+        # Create new session
         with transaction.atomic():
             session = AttendanceSession.objects.create(
                 classroom=classroom,
                 taken_by=request.user,
             )
-            # Pre-create ABSENT records for all students
             students = Student.objects.filter(classroom=classroom)
             for student in students:
                 AttendanceRecord.objects.get_or_create(
@@ -120,11 +147,10 @@ def start_attendance(request, classroom_id):
 
     except Exception as e:
         logger.error(f"Error starting attendance session: {e}", exc_info=True)
-        messages.error(request, "Failed to start attendance session")
+        messages.error(request, f"Failed to start attendance session: {str(e)}")
         return redirect("students:classroom_list")
 
-
-@login_required
+@teacher_required
 def take_attendance(request, session_id):
     """Display attendance page with video feed."""
     try:
@@ -231,16 +257,25 @@ def session_status(request, session_id):
 def session_report_list(request):
     """List all attendance sessions."""
     try:
-        sessions = (
-            AttendanceSession.objects.select_related("classroom", "taken_by")
-            .order_by("-date", "-start_time")
-        )
+        if request.user.is_admin():
+            sessions = AttendanceSession.objects.select_related(
+                "classroom", "taken_by"
+            ).order_by("-date", "-start_time")
+        else:
+            # Teachers only see sessions for their assigned classrooms
+            try:
+                assigned = request.user.teacher_profile.assigned_classrooms.all()
+                sessions = AttendanceSession.objects.filter(
+                    classroom__in=assigned
+                ).select_related("classroom", "taken_by").order_by("-date", "-start_time")
+            except Exception:
+                sessions = AttendanceSession.objects.none()
+
         return render(request, "attendance/report_list.html", {"sessions": sessions})
     except Exception as e:
         logger.error(f"Error in session_report_list: {e}")
         messages.error(request, "Error loading attendance reports")
         return render(request, "attendance/report_list.html", {"sessions": []})
-
 
 @login_required
 def session_report_detail(request, session_id):
@@ -257,3 +292,213 @@ def session_report_detail(request, session_id):
         logger.error(f"Error in session_report_detail: {e}")
         messages.error(request, "Error loading report details")
         return redirect("attendance:session_report_list")
+
+
+# ===== ANALYTICS & EXPORT FEATURES =====
+
+@teacher_required
+def attendance_analytics(request):
+    """Analytics dashboard with attendance statistics."""
+    try:
+        # Date range filter
+        days = request.GET.get('days', '30')
+        try:
+            days = int(days)
+        except ValueError:
+            days = 30
+
+        start_date = timezone.now().date() - timedelta(days=days)
+
+        # Query data
+        sessions = AttendanceSession.objects.filter(
+            date__gte=start_date
+        ).select_related('classroom', 'taken_by')
+
+        total_records = AttendanceRecord.objects.filter(
+            session__date__gte=start_date
+        )
+
+        # Statistics
+        present_count = total_records.filter(status='PRESENT').count()
+        absent_count = total_records.filter(status='ABSENT').count()
+        late_count = total_records.filter(status='LATE').count()
+        leave_count = total_records.filter(status='LEAVE').count()
+        total_count = total_records.count()
+
+        # Attendance rate
+        attendance_rate = (present_count / total_count * 100) if total_count > 0 else 0
+
+        # Per-classroom stats
+        classroom_stats = []
+        for classroom in ClassRoom.objects.all():
+            class_records = total_records.filter(session__classroom=classroom)
+            class_present = class_records.filter(status='PRESENT').count()
+            class_total = class_records.count()
+            class_rate = (class_present / class_total * 100) if class_total > 0 else 0
+
+            if class_total > 0:
+                classroom_stats.append({
+                    'name': classroom.name,
+                    'present': class_present,
+                    'absent': class_records.filter(status='ABSENT').count(),
+                    'late': class_records.filter(status='LATE').count(),
+                    'total': class_total,
+                    'rate': round(class_rate, 2)
+                })
+
+        # Attendance trend (daily)
+        daily_data = []
+        for i in range(days, 0, -1):
+            date = (timezone.now().date() - timedelta(days=i))
+            day_records = total_records.filter(session__date=date)
+            day_present = day_records.filter(status='PRESENT').count()
+            if day_records.exists():
+                daily_data.append({
+                    'date': date.strftime('%m-%d'),
+                    'present': day_present,
+                    'total': day_records.count()
+                })
+
+        context = {
+            'present_count': present_count,
+            'absent_count': absent_count,
+            'late_count': late_count,
+            'leave_count': leave_count,
+            'total_count': total_count,
+            'attendance_rate': round(attendance_rate, 2),
+            'classroom_stats': classroom_stats,
+            'daily_data': json.dumps(daily_data),
+            'sessions': sessions,
+            'days': days,
+        }
+
+        return render(request, 'attendance/analytics.html', context)
+
+    except Exception as e:
+        logger.error(f"Error in attendance_analytics: {e}")
+        messages.error(request, "Error loading analytics")
+        return redirect('attendance:session_report_list')
+
+
+@teacher_required
+def export_attendance_csv(request):
+    """Export attendance records to CSV."""
+    try:
+        days = request.GET.get('days', '30')
+        try:
+            days = int(days)
+        except ValueError:
+            days = 30
+
+        start_date = timezone.now().date() - timedelta(days=days)
+
+        # Get records
+        records = AttendanceRecord.objects.filter(
+            session__date__gte=start_date
+        ).select_related('student', 'session__classroom', 'marked_by')
+
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="attendance_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'Date', 'Session Time', 'Classroom', 'Roll No', 'Student Name',
+            'Status', 'Marked By', 'Timestamp'
+        ])
+
+        for record in records:
+            writer.writerow([
+                record.session.date.strftime('%d-%m-%Y'),
+                record.session.start_time.strftime('%H:%M') if record.session.start_time else '',
+                record.session.classroom.name,
+                record.student.roll_no,
+                record.student.name,
+                record.status,
+                record.marked_by.get_full_name() if record.marked_by else 'Auto',
+                record.timestamp.strftime('%d-%m-%Y %H:%M:%S'),
+            ])
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Error in export_attendance_csv: {e}")
+        messages.error(request, "Error exporting CSV")
+        return redirect('attendance:session_report_list')
+
+
+@teacher_required
+def export_session_csv(request, session_id):
+    """Export single session to CSV."""
+    try:
+        session = get_object_or_404(AttendanceSession, id=session_id)
+        records = session.records.select_related('student')
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="attendance_{session.classroom.name}_{session.date}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Session Report', session.classroom.name, session.date])
+        writer.writerow([])
+        writer.writerow(['Roll No', 'Student Name', 'Status', 'Timestamp'])
+
+        for record in records:
+            writer.writerow([
+                record.student.roll_no,
+                record.student.name,
+                record.status,
+                record.timestamp.strftime('%H:%M:%S'),
+            ])
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Error in export_session_csv: {e}")
+        messages.error(request, "Error exporting session")
+        return redirect('attendance:session_report_list')
+
+
+@login_required
+def analytics_api_data(request):
+    """API endpoint for chart data."""
+    try:
+        days = int(request.GET.get('days', 30))
+        start_date = timezone.now().date() - timedelta(days=days)
+
+        # Status breakdown
+        total_records = AttendanceRecord.objects.filter(
+            session__date__gte=start_date
+        )
+
+        status_data = {
+            'PRESENT': total_records.filter(status='PRESENT').count(),
+            'ABSENT': total_records.filter(status='ABSENT').count(),
+            'LATE': total_records.filter(status='LATE').count(),
+            'LEAVE': total_records.filter(status='LEAVE').count(),
+        }
+
+        # Classroom breakdown
+        classroom_data = {}
+        for classroom in ClassRoom.objects.all():
+            class_present = total_records.filter(
+                session__classroom=classroom,
+                status='PRESENT'
+            ).count()
+            class_total = total_records.filter(session__classroom=classroom).count()
+            if class_total > 0:
+                classroom_data[classroom.name] = {
+                    'present': class_present,
+                    'total': class_total,
+                    'rate': round((class_present / class_total * 100), 2)
+                }
+
+        return JsonResponse({
+            'status': 'success',
+            'status_data': status_data,
+            'classroom_data': classroom_data,
+        })
+
+    except Exception as e:
+        logger.error(f"Error in analytics_api_data: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
