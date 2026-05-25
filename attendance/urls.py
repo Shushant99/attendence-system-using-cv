@@ -15,7 +15,7 @@ urlpatterns = [
     path('sessions/<int:session_id>/status/', views.session_status, name='session_status'),
     path('reports/', views.session_report_list, name='session_report_list'),
     path('reports/<int:session_id>/', views.session_report_detail, name='session_report_detail'),
-
+    path('sessions/<int:session_id>/stop-camera/', views.stop_camera, name='stop_camera'),
     # Analytics & Export
     path('analytics/', views.attendance_analytics, name='analytics'),
     path('api/analytics-data/', views.analytics_api_data, name='analytics_api_data'),

@@ -39,39 +39,27 @@ System{% endblock %} {% block content %}
             </td>
             <td>
               {% if session.start_time %}
-              <span class="badge badge-success"
-                >{{ session.start_time|time:"H:i" }}</span
-              >
+              <span class="badge badge-success">{{ session.start_time|time:"H:i" }}</span>
               {% else %}
-              <span class="badge badge-warning"
-                ><i class="fas fa-spinner fa-spin"></i> In Progress</span
-              >
+              <span class="badge badge-warning"><i class="fas fa-spinner fa-spin"></i> In Progress</span>
               {% endif %}
             </td>
             <td>
               <span class="badge badge-info">{{ session.classroom.name }}</span>
             </td>
             <td>
-              {{
-              session.taken_by.get_full_name|default:session.taken_by.username
-              }}
+              {{ session.taken_by.get_full_name|default:session.taken_by.username|default:"—" }}
             </td>
             <td>
               <strong>{{ session.records.count }}</strong>
             </td>
             <td style="text-align: center">
-              <a
-                href="{% url 'attendance:session_report_detail' session.id %}"
-                class="btn btn-sm btn-primary"
-                title="View Details"
-              >
+              <a href="{% url 'attendance:session_report_detail' session.id %}" class="btn btn-sm btn-primary"
+                title="View Details">
                 <i class="fas fa-eye"></i>
               </a>
-              <a
-                href="{% url 'attendance:export_session_csv' session.id %}"
-                class="btn btn-sm btn-success"
-                title="Export CSV"
-              >
+              <a href="{% url 'attendance:export_session_csv' session.id %}" class="btn btn-sm btn-success"
+                title="Export CSV">
                 <i class="fas fa-download"></i>
               </a>
             </td>
@@ -89,10 +77,7 @@ System{% endblock %} {% block content %}
       <p class="text-muted">
         Start taking attendance from a classroom to generate reports
       </p>
-      <a
-        href="{% url 'students:classroom_list' %}"
-        class="btn btn-primary mt-3"
-      >
+      <a href="{% url 'students:classroom_list' %}" class="btn btn-primary mt-3">
         <i class="fas fa-door-open"></i> View Classrooms
       </a>
     </div>

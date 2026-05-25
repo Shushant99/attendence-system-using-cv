@@ -20,6 +20,7 @@ logger = logging.getLogger('attendance')
 
 # Global camera instance
 camera = None
+camera_active = True
 CAMERA_INDEX = 0
 
 
@@ -32,12 +33,21 @@ def get_camera():
             if not camera.isOpened():
                 logger.error("Failed to open camera")
                 return None
+        camera_active = True
         return camera
     except Exception as e:
         logger.error(f"Error getting camera: {e}")
         return None
-
-
+def release_camera():
+    global camera , camera_active
+    camera_active = False
+    try:
+        if camera is not None:
+            camera.release()
+            camera = None
+            logger.info("camera relesed successfully")
+    except Exception as e:
+        logger.error(f"error releasing camera:{e}")
 def gen_frames(session_id):
     """Generator function to stream video frames with face recognition."""
     cam = get_camera()
@@ -49,7 +59,7 @@ def gen_frames(session_id):
     logger.info(f"Starting frame generation for session {session_id}")
 
     try:
-        while True:
+        while camera_active:
             success, frame = cam.read()
             if not success:
                 logger.warning(f"Failed to read frame for session {session_id}")
@@ -189,7 +199,15 @@ def end_attendance(request, session_id):
         logger.error(f"Error ending attendance session: {e}")
         messages.error(request, "Error ending attendance session")
         return redirect("attendance:session_report_list")
-
+@login_required
+def stop_camera(request, session_id):
+    """AJAX endpoint to release the camera before the page navigates away."""
+    try:
+        release_camera()
+        return JsonResponse({"success": True})
+    except Exception as e:
+        logger.error(f"Error in stop_camera: {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 @login_required
 def attendance_detail(request, session_id):
@@ -308,14 +326,28 @@ def attendance_analytics(request):
             days = 30
 
         start_date = timezone.now().date() - timedelta(days=days)
+        # Scope classrooms by role
+        classroom_id = request.GET.get('classroom_id')
 
+        if request.user.is_admin():
+            
+            classrooms = ClassRoom.objects.filter(id=classroom_id) if classroom_id else ClassRoom.objects.all()
+            
+                
+        else:
+    # Teacher — only assigned classrooms
+            try:
+                classrooms = request.user.teacher_profile.assigned_classrooms.all()
+            except Exception:
+                classrooms = ClassRoom.objects.none()
         # Query data
         sessions = AttendanceSession.objects.filter(
             date__gte=start_date
         ).select_related('classroom', 'taken_by')
 
         total_records = AttendanceRecord.objects.filter(
-            session__date__gte=start_date
+        session__date__gte=start_date,
+        session__classroom__in=classrooms
         )
 
         # Statistics
@@ -330,7 +362,7 @@ def attendance_analytics(request):
 
         # Per-classroom stats
         classroom_stats = []
-        for classroom in ClassRoom.objects.all():
+        for classroom in classrooms:
             class_records = total_records.filter(session__classroom=classroom)
             class_present = class_records.filter(status='PRESENT').count()
             class_total = class_records.count()
@@ -370,14 +402,17 @@ def attendance_analytics(request):
             'daily_data': json.dumps(daily_data),
             'sessions': sessions,
             'days': days,
+            'all_classrooms': ClassRoom.objects.all(),   # for admin dropdown
+            'selected_classroom_id': int(classroom_id) if classroom_id else None,
         }
 
         return render(request, 'attendance/analytics.html', context)
 
     except Exception as e:
-        logger.error(f"Error in attendance_analytics: {e}")
-        messages.error(request, "Error loading analytics")
-        return redirect('attendance:session_report_list')
+        raise e
+        # logger.error(f"Error in attendance_analytics: {e}")
+        # messages.error(request, "Error loading analytics")
+        # return redirect('attendance:session_report_list')
 
 
 @teacher_required
