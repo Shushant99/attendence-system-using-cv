@@ -1,106 +1,161 @@
 {% extends 'base.html' %}
-
 {% block title %}Take Attendance - Attendance System{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h1><i class="fas fa-video"></i> Live Attendance</h1>
-            <p class="text-muted">Session: <strong>{{ session.classroom.name }} - {{ session.date }}</strong> |
-                Classroom: <strong>{{ session.classroom.name }}</strong></p>
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1><i class="fas fa-video"></i> Live Attendance</h1>
+      <p class="text-muted">Classroom: <strong>{{ session.classroom.name }} - {{ session.date }}</strong></p>
+    </div>
+    <div class="col-md-4 text-end" style="display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+      <button id="switch-camera-btn" class="btn btn-secondary">
+        <i class="fas fa-sync"></i> Switch Camera
+      </button>
+      <a href="{% url 'attendance:end_attendance' session.id %}" class="btn btn-danger">
+        <i class="fas fa-stop"></i> End Session
+      </a>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8 mb-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-camera"></i> Camera Feed</h5>
         </div>
-        <div class="col-md-4 text-end">
-            <button id="end-session-btn" class="btn btn-danger">
-                <i class="fas fa-stop"></i> End Session
-            </button>
+        <div class="card-body p-0" style="position: relative;">
+          <!-- Live camera preview -->
+          <video id="video" autoplay playsinline muted
+            style="width: 100%; border-radius: 0 0 8px 8px; display: block;"></video>
+          <!-- Annotated frame overlay from server -->
+          <img id="annotated" alt="Recognition overlay"
+            style="width: 100%; position: absolute; top: 0; left: 0; opacity: 0.85; display: none;" />
+          <!-- Status badge -->
+          <div id="status-badge"
+            style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">
+            <i class="fas fa-circle text-success"></i> Scanning...
+          </div>
         </div>
+      </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-camera"></i> Video Stream</h5>
-                </div>
-                <div class="card-body p-0">
-                    <img src="{% url 'attendance:video_feed' session.id %}"
-                        style="width: 100%; border-radius: 0 0 8px 8px;" alt="Live Video Feed">
-                </div>
-            </div>
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-check-circle"></i> Present Students</h5>
         </div>
-
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-check-circle"></i> Present Students</h5>
-                </div>
-                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
-                    <div id="present-list">
-                        <p class="text-muted text-center">Waiting for students...</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Info</h5>
-                </div>
-                <div class="card-body">
-                    <p><strong>Session:</strong> {{ session.name }}</p>
-                    <p><strong>Classroom:</strong> {{ session.classroom.name }}</p>
-                    <p><strong>Started:</strong> {{ session.start_time|time:"H:i" }}</p>
-                    <hr>
-                    <small class="text-muted">
-                        <i class="fas fa-circle text-success"></i> Green box = Recognized<br>
-                        <i class="fas fa-circle text-danger"></i> Red box = Unknown
-                    </small>
-                </div>
-            </div>
+        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+          <div id="present-list">
+            <p class="text-muted text-center">Waiting for students...</p>
+          </div>
         </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-info-circle"></i> Info</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Classroom:</strong> {{ session.classroom.name }}</p>
+          <p><strong>Started:</strong> {{ session.start_time|time:"H:i" }}</p>
+          <hr>
+          <small class="text-muted">
+            <i class="fas fa-circle text-success"></i> Green box = Recognized<br>
+            <i class="fas fa-circle text-danger"></i> Red box = Unknown
+          </small>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
-    // Refresh present students list every 5 seconds
-    function updatePresentStudents() {
-        fetch("{% url 'attendance:session_status' session.id %}")
-            .then(response => response.json())
-            .then(data => {
-                let html = '';
-                if (data.present_students.length === 0) {
-                    html = '<p class="text-muted text-center">Waiting for students...</p>';
-                } else {
-                    html = '<ul class="list-group">';
-                    data.present_students.forEach(student => {
-                        html += `<li class="list-group-item">
-                            <i class="fas fa-check text-success"></i> ${student.name}
-                            <span class="badge bg-success float-end">${student.roll_no}</span>
-                        </li>`;
-                    });
-                    html += '</ul>';
-                }
-                document.getElementById('present-list').innerHTML = html;
-            });
+  let stream = null;
+  let facingMode = 'environment'; // start with back camera
+  let processing = false;
+  const video = document.getElementById('video');
+  const annotated = document.getElementById('annotated');
+  const statusBadge = document.getElementById('status-badge');
+
+  async function startCamera() {
+    try {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facingMode, width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      video.srcObject = stream;
+    } catch (err) {
+      statusBadge.innerHTML = '<i class="fas fa-exclamation-circle text-danger"></i> Camera error: ' + err.message;
     }
+  }
 
-    // Update every 5 seconds
-    setInterval(updatePresentStudents, 5000);
-    updatePresentStudents(); // Initial load
+  document.getElementById('switch-camera-btn').addEventListener('click', function () {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    startCamera();
+  });
 
+  async function captureAndSend() {
+    if (processing || !stream || video.readyState < 2) return;
+    processing = true;
 
-    document.getElementById('end-session-btn').addEventListener('click', function () {
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stopping...';
-        document.querySelector('.card-body img').src = '';
-        fetch("{% url 'attendance:stop_camera' session.id %}", {
-            method: 'POST',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-        }).finally(() => {
-            window.location.href = "{% url 'attendance:end_attendance' session.id %}";
-        });
-    });
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      const frameData = canvas.toDataURL('image/jpeg', 0.7);
 
+      const response = await fetch("{% url 'attendance:process_frame' session.id %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ frame: frameData })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        annotated.src = data.annotated_frame;
+        annotated.style.display = 'block';
+      }
+    } catch (err) {
+      console.error('Frame error:', err);
+    } finally {
+      processing = false;
+    }
+  }
+
+  // Send a frame every 1 second
+  setInterval(captureAndSend, 1000);
+
+  // Refresh present students every 5 seconds
+  function updatePresentStudents() {
+    fetch("{% url 'attendance:session_status' session.id %}")
+      .then(r => r.json())
+      .then(data => {
+        let html = '';
+        if (data.present_students.length === 0) {
+          html = '<p class="text-muted text-center">Waiting for students...</p>';
+        } else {
+          html = '<ul class="list-group">';
+          data.present_students.forEach(s => {
+            html += `<li class="list-group-item">
+              <i class="fas fa-check text-success"></i> ${s.name}
+              <span class="badge bg-success float-end">${s.roll_no}</span>
+            </li>`;
+          });
+          html += '</ul>';
+        }
+        document.getElementById('present-list').innerHTML = html;
+      });
+  }
+
+  setInterval(updatePresentStudents, 5000);
+  updatePresentStudents();
+
+  // Start camera on load
+  startCamera();
 </script>
-
 {% endblock %}

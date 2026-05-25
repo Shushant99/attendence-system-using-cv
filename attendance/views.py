@@ -24,90 +24,6 @@ camera_active = True
 CAMERA_INDEX = 0
 
 
-def get_camera():
-    """Get or create camera instance."""
-    global camera , camera_active
-    try:
-        if camera is None:
-            camera = cv2.VideoCapture(CAMERA_INDEX)
-            if not camera.isOpened():
-                logger.error("Failed to open camera")
-                return None
-        camera_active = True
-        return camera
-    except Exception as e:
-        logger.error(f"Error getting camera: {e}")
-        return None
-def release_camera():
-    global camera , camera_active
-    camera_active = False
-    try:
-        if camera is not None:
-            camera.release()
-            camera = None
-            logger.info("camera relesed successfully")
-    except Exception as e:
-        logger.error(f"error releasing camera:{e}")
-def gen_frames(session_id):
-    """Generator function to stream video frames with face recognition."""
-    cam = get_camera()
-    if cam is None:
-        logger.error(f"Camera not available for session {session_id}")
-        return
-
-    known_encodings, known_ids = load_known_faces()
-    logger.info(f"Starting frame generation for session {session_id}")
-
-    try:
-        while camera_active:
-            success, frame = cam.read()
-            if not success:
-                logger.warning(f"Failed to read frame for session {session_id}")
-                break
-
-            try:
-                student_ids, frame = recognize_from_frame(frame, known_encodings, known_ids)
-
-                # Update attendance records for recognized students
-                for sid in student_ids:
-                    try:
-                        student = Student.objects.get(id=sid)
-                        record, created = AttendanceRecord.objects.get_or_create(
-                            session_id=session_id,
-                            student=student,
-                            defaults={'status': 'PRESENT', 'marked_by': None},
-                        )
-                        if not created and record.status != 'PRESENT':
-                            record.status = 'PRESENT'
-                            record.save(update_fields=['status'])
-                    except Student.DoesNotExist:
-                        logger.error(f"Student {sid} not found")
-                    except Exception as e:
-                        logger.error(f"Error updating attendance for student {sid}: {e}")
-
-            except Exception as e:
-                logger.error(f"Error in frame processing for session {session_id}: {e}")
-                continue
-
-            try:
-                ret, buffer = cv2.imencode('.jpg', frame)
-                if not ret:
-                    logger.warning("Failed to encode frame")
-                    continue
-                frame_bytes = buffer.tobytes()
-                yield (
-                    b"--frame\r\n"
-                    b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
-                )
-            except Exception as e:
-                logger.error(f"Error encoding frame: {e}")
-                continue
-
-    except GeneratorExit:
-        logger.info(f"Client disconnected from session {session_id}")
-    except Exception as e:
-        logger.error(f"Error in gen_frames for session {session_id}: {e}", exc_info=True)
-
 
 @teacher_required
 def start_attendance(request, classroom_id):
@@ -170,19 +86,60 @@ def take_attendance(request, session_id):
         logger.error(f"Error in take_attendance: {e}")
         messages.error(request, "Error loading attendance session")
         return redirect("attendance:session_report_list")
-
-
-def video_feed(request, session_id):
-    """Stream video feed with face recognition."""
+@login_required
+def process_frame(request, session_id):
+    """Receive a frame from browser camera, run face recognition, return annotated frame."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
     try:
-        session = get_object_or_404(AttendanceSession, id=session_id)
-        return StreamingHttpResponse(
-            gen_frames(session_id),
-            content_type="multipart/x-mixed-replace; boundary=frame",
-        )
+        import base64
+        import numpy as np
+
+        data = json.loads(request.body)
+        image_data = data.get('frame', '')
+
+        # Strip data URL prefix
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+
+        # Decode base64 to OpenCV image
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return JsonResponse({'error': 'Invalid image'}, status=400)
+
+        known_encodings, known_ids = load_known_faces()
+        student_ids, annotated_frame = recognize_from_frame(frame, known_encodings, known_ids)
+
+        # Update attendance records
+        for sid in student_ids:
+            try:
+                student = Student.objects.get(id=sid)
+                record, created = AttendanceRecord.objects.get_or_create(
+                    session_id=session_id,
+                    student=student,
+                    defaults={'status': 'PRESENT', 'marked_by': None},
+                )
+                if not created and record.status != 'PRESENT':
+                    record.status = 'PRESENT'
+                    record.save(update_fields=['status'])
+            except Student.DoesNotExist:
+                pass
+
+        # Encode annotated frame back to base64
+        ret, buffer = cv2.imencode('.jpg', annotated_frame)
+        annotated_b64 = base64.b64encode(buffer.tobytes()).decode('utf-8')
+
+        return JsonResponse({
+            'success': True,
+            'annotated_frame': f'data:image/jpeg;base64,{annotated_b64}',
+        })
+
     except Exception as e:
-        logger.error(f"Error in video_feed: {e}")
-        return JsonResponse({"error": "Failed to start video feed"}, status=500)
+        logger.error(f"Error in process_frame: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @login_required
@@ -192,7 +149,7 @@ def end_attendance(request, session_id):
         session = get_object_or_404(AttendanceSession, id=session_id)
         session.end_time = timezone.now()
         session.save()
-        release_camera()
+       
         logger.info(f"Ended attendance session {session.id}")
         messages.success(request, "Attendance session ended")
         return redirect("attendance:attendance_detail", session_id=session.id)
@@ -200,15 +157,6 @@ def end_attendance(request, session_id):
         logger.error(f"Error ending attendance session: {e}")
         messages.error(request, "Error ending attendance session")
         return redirect("attendance:session_report_list")
-@login_required
-def stop_camera(request, session_id):
-    """AJAX endpoint to release the camera before the page navigates away."""
-    try:
-        release_camera()
-        return JsonResponse({"success": True})
-    except Exception as e:
-        logger.error(f"Error in stop_camera: {e}")
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 @login_required
 def attendance_detail(request, session_id):

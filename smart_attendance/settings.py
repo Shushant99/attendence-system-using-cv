@@ -4,9 +4,11 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'change-this-in-production'
-DEBUG = True
-ALLOWED_HOSTS = []
-
+DEBUG = False
+ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = ['https://*.loca.lt']
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = 'Lax'
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
