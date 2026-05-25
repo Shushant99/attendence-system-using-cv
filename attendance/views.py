@@ -26,7 +26,7 @@ CAMERA_INDEX = 0
 
 def get_camera():
     """Get or create camera instance."""
-    global camera
+    global camera , camera_active
     try:
         if camera is None:
             camera = cv2.VideoCapture(CAMERA_INDEX)
@@ -192,6 +192,7 @@ def end_attendance(request, session_id):
         session = get_object_or_404(AttendanceSession, id=session_id)
         session.end_time = timezone.now()
         session.save()
+        release_camera()
         logger.info(f"Ended attendance session {session.id}")
         messages.success(request, "Attendance session ended")
         return redirect("attendance:attendance_detail", session_id=session.id)

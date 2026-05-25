@@ -98,13 +98,6 @@ def classroom_delete(request, pk):
     return render(request, 'students/classroom_confirm_delete.html', {'classroom': classroom})
 
 
-@login_required
-def student_list(request):
-    """List all students"""
-    students = Student.objects.all()
-    return render(request, 'students/student_list.html', {'students': students})
-
-
 @admin_required
 def student_create(request):
     """Create new student"""

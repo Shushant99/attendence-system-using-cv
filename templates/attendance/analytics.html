@@ -21,10 +21,10 @@ Attendance System{% endblock %} {% block content %}
         <div class="col-md">
           <label class="form-label">Time Range (Days)</label>
           <select name="days" class="form-control" onchange="this.form.submit()">
-            <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
-            <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
-            <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
-            <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+            <option value="7" {% if days==7 %}selected{% endif %}>Last 7 days</option>
+            <option value="30" {% if days==30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if days==90 %}selected{% endif %}>Last 90 days</option>
+            <option value="365" {% if days==365 %}selected{% endif %}>Last year</option>
           </select>
         </div>
         {% if request.user.is_admin %}
@@ -33,14 +33,14 @@ Attendance System{% endblock %} {% block content %}
           <select name="classroom_id" class="form-control" onchange="this.form.submit()">
             <option value="">All Classrooms</option>
             {% for cls in all_classrooms %}
-            <option value="{{ cls.id }}" {% if selected_classroom_id == cls.id %}selected{% endif %}>
+            <option value="{{ cls.id }}" {% if selected_classroom_id==cls.id %}selected{% endif %}>
               {{ cls.name }}
             </option>
             {% endfor %}
           </select>
         </div>
         {% endif %}
-        
+
       </form>
     </div>
   </div>
@@ -231,7 +231,7 @@ Attendance System{% endblock %} {% block content %}
       data: {
         labels: ['Present', 'Absent', 'Late', 'Leave'],
         datasets: [{
-          data: [{{ present_count }}, {{ absent_count }}, {{ late_count }}, { { leave_count } }],  // Django template variables
+          data: [{{ present_count }}, {{ absent_count }}, {{ late_count }}, { { leave_count } w }],  // Django template variables
   backgroundColor: [
     'rgba(16, 185, 129, 0.8)',    // Green - Present
     'rgba(239, 68, 68, 0.8)',     // Red - Absent
@@ -266,8 +266,7 @@ Attendance System{% endblock %} {% block content %}
   // Trend Chart
   const trendCtx = document.getElementById('trendChart');
   if (trendCtx) {
-    const dailyData = {{ daily_data| safe
-  }};  // Django template JSON
+    const dailyData = {{ daily_data|safe }};  // Django template JSON
   const labels = dailyData.map(d => d.date);
   const data = dailyData.map(d => d.present);
 

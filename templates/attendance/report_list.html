@@ -38,7 +38,7 @@ System{% endblock %} {% block content %}
               <strong>{{ session.date|date:"d M Y" }}</strong>
             </td>
             <td>
-              {% if session.start_time %}
+              {% if session.end_time %}
               <span class="badge badge-success">{{ session.start_time|time:"H:i" }}</span>
               {% else %}
               <span class="badge badge-warning"><i class="fas fa-spinner fa-spin"></i> In Progress</span>
