@@ -1,13 +1,15 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'change-this-in-production'
-DEBUG = False
-ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['https://*.loca.lt']
-CSRF_COOKIE_SECURE = False
+SECRET_KEY = os.environ['DJANGO_SECRET_KEY']   # crashes on startup if missing — intentional
+DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = 'Lax'
 INSTALLED_APPS = [
     'django.contrib.admin',
