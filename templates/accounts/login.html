@@ -1,26 +1,18 @@
 {% extends 'base.html' %} {% block title %}Login - Smart Attendance
 System{%endblock %} {% block content %}
 <div class="container-main">
-  <div
-    class="row justify-content-center align-items-center"
-    style="min-height: 70vh"
-  >
+  <div class="row justify-content-center align-items-center" style="min-height: 70vh">
     <div class="col-md-5 col-lg-4">
       <div class="card shadow-xl">
         <div class="card-header">
           <div class="text-center">
-            <i
-              class="fas fa-fingerprint"
-              style="font-size: 2.5rem; margin-bottom: 1rem"
-            ></i>
+            <i class="fas fa-fingerprint" style="font-size: 2.5rem; margin-bottom: 1rem"></i>
             <h2 style="margin: 0">Welcome Back</h2>
-            <p
-              style="
+            <p style="
                 margin: 0.5rem 0 0;
                 font-size: 0.9rem;
                 color: rgba(255, 255, 255, 0.8);
-              "
-            >
+              ">
               Smart Attendance System
             </p>
           </div>
@@ -64,61 +56,20 @@ System{%endblock %} {% block content %}
           <hr />
           <p class="text-center text-muted" style="margin: 0">
             Don't have an account?
-            <a
-              href="{% url 'accounts:register' %}"
-              style="
+            <a href="{% url 'accounts:register' %}" style="
                 color: var(--secondary);
                 text-decoration: none;
                 font-weight: 600;
-              "
-              >Register here</a
-            >
+              ">Register here</a>
           </p>
         </div>
       </div>
 
-      <!-- Demo Info -->
-      <div
-        class="card mt-4"
-        style="
-          border-left: 4px solid var(--secondary);
-          background: rgba(59, 130, 246, 0.05);
-        "
-      >
-        <div class="card-body">
-          <p style="margin: 0; font-size: 0.85rem; color: var(--text-light)">
-            <i
-              class="fas fa-info-circle"
-              style="color: var(--secondary); margin-right: 0.5rem"
-            ></i>
-            <strong>Demo Credentials:</strong><br />
-            Username:
-            <code
-              style="
-                background: rgba(0, 0, 0, 0.1);
-                padding: 2px 4px;
-                border-radius: 4px;
-              "
-              >admin</code
-            ><br />
-            Password:
-            <code
-              style="
-                background: rgba(0, 0, 0, 0.1);
-                padding: 2px 4px;
-                border-radius: 4px;
-              "
-              >password</code
-            >
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-<!-- </div> -->
-{% endblock %} {% block extra_css %}
-<style>
-  /* body {
+
+
+      {% endblock %} {% block extra_css %}
+      <style>
+        /* body {
     display: flex;
     flex-direction: column;
   }
@@ -127,9 +78,9 @@ System{%endblock %} {% block content %}
     flex: 1;
   } */
 
-  code {
-    font-family: "Courier New", monospace;
-    font-size: 0.85rem;
-  }
-</style>
-{% endblock %}
+        code {
+          font-family: "Courier New", monospace;
+          font-size: 0.85rem;
+        }
+      </style>
+      {% endblock %}
