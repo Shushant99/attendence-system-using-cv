@@ -20,5 +20,7 @@ urlpatterns = [
     path('api/analytics-data/', views.analytics_api_data, name='analytics_api_data'),
     path('export/csv/', views.export_attendance_csv, name='export_csv'),
     path('export/session/<int:session_id>/csv/', views.export_session_csv, name='export_session_csv'),
+    path('reports/', views.session_report_list, name='session_report_list'),
+    path('reports/<int:session_id>/', views.session_report_detail, name='session_report_detail'),
 ]
 
