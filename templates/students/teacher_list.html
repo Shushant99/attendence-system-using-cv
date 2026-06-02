@@ -48,15 +48,43 @@
                                     {% endfor %}
                                 </td>
                                 <td>
-                                    <a href="{% url 'students:teacher_assign_classrooms' teacher.id %}" class="btn btn-sm btn-info" title="Assign classrooms">
-                                        <i class="fas fa-chalkboard"></i>
-                                    </a>
-                                    <a href="{% url 'students:teacher_update' teacher.id %}" class="btn btn-sm btn-warning" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'students:teacher_delete' teacher.id %}" class="btn btn-sm btn-danger" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                            Actions
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'students:teacher_update' teacher.id %}">
+                                                    <i class="fas fa-edit text-warning me-2"></i> Edit
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'students:teacher_assign_classrooms' teacher.id %}">
+                                                    <i class="fas fa-chalkboard text-info me-2"></i> Assign Classrooms
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'students:teacher_change_password' teacher.id %}">
+                                                    <i class="fas fa-key text-primary me-2"></i> Change Password
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'students:teacher_impersonate' teacher.id %}">
+                                                    <i class="fas fa-user-secret text-success me-2"></i> Impersonate
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="post" action="{% url 'students:teacher_delete' teacher.id %}">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="dropdown-item text-danger"
+                                                        onclick="return confirm('Delete {{ teacher.user.get_full_name }}? This cannot be undone.')">
+                                                        <i class="fas fa-trash me-2"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -78,8 +106,8 @@
     {% endif %}
 
     <div class="alert alert-info mt-4">
-        <i class="fas fa-info-circle"></i> <strong>Note:</strong> 
-        Teachers are created with a temporary password <code>TempPass@123</code>. 
+        <i class="fas fa-info-circle"></i> <strong>Note:</strong>
+        Teachers are created with a unique temporary password shown at creation time.
         They should change it after first login.
     </div>
 </div>

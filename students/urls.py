@@ -22,4 +22,7 @@ urlpatterns = [
     path('teachers/<int:pk>/assign-classrooms/', views.teacher_assign_classrooms, name='teacher_assign_classrooms'),
     path('teachers/<int:pk>/update/', views.teacher_update, name='teacher_update'),
     path('teachers/<int:pk>/delete/', views.teacher_delete, name='teacher_delete'),
+    path('teachers/<int:pk>/change-password/', views.teacher_change_password, name='teacher_change_password'),
+    path('teachers/<int:pk>/impersonate/', views.teacher_impersonate, name='teacher_impersonate'),
+    path('impersonate/stop/', views.impersonate_stop, name='impersonate_stop')
 ]

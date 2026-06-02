@@ -7,7 +7,7 @@ from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.contrib import messages
-
+from django.core.exceptions import PermissionDenied
 
 def admin_required(view_func):
     """Decorator to require admin role."""
@@ -20,6 +20,15 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapped_view
 
+def admin_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapped_view(request, *args, **kwargs):
+        if not request.user.is_admin():   # uses is_admin() which checks role AND is_superuser
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect('accounts:dashboard')
+        return view_func(request, *args, **kwargs)
+    return wrapped_view
 
 def teacher_required(view_func):
     """Decorator to require teacher role."""

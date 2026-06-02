@@ -4,6 +4,8 @@ from django import forms
 from django.contrib.auth.models import User
 from .models import Student, ClassRoom, Teacher
 from django.contrib.auth import get_user_model
+from django import forms
+from django.contrib.auth.password_validation import validate_password
 
 User = get_user_model()
 
@@ -49,6 +51,17 @@ class StudentForm(forms.ModelForm):
             'photo': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
+    def clean_roll_no(self):
+        roll_no = self.cleaned_data.get('roll_no')
+        if roll_no:
+            roll_no = roll_no.strip()
+            if not roll_no:
+                raise forms.ValidationError('Roll number is required.')
+            if not roll_no.isalnum():
+                raise forms.ValidationError('Roll number must contain only letters and numbers.')
+            self.cleaned_data['roll_no'] = roll_no
+        return roll_no
+
 
 class ClassRoomForm(forms.ModelForm):
     """Form to add/edit classrooms"""
@@ -58,3 +71,16 @@ class ClassRoomForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'E.g., CSE-1'}),
         }
+class TeacherPasswordChangeForm(forms.Form):
+    new_password = forms.CharField(widget=forms.PasswordInput, min_length=8)
+    confirm_password = forms.CharField(widget=forms.PasswordInput)
+    def clean_new_password(self):
+        password = self.cleaned_data.get('new_password')
+        validate_password(password)   # runs all validators from settings
+        return password
+    
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('new_password') != cleaned.get('confirm_password'):
+            raise forms.ValidationError("Passwords do not match.")
+        return cleaned

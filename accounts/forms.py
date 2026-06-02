@@ -58,14 +58,20 @@ class RegisterForm(forms.ModelForm):
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
-        if username and User.objects.filter(username=username).exists():
-            raise forms.ValidationError('Username already exists')
+        if username:
+            username = username.strip()
+            if User.objects.filter(username__iexact=username).exists():
+                raise forms.ValidationError('Username already exists')
+            self.cleaned_data['username'] = username
         return username
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if email and User.objects.filter(email=email).exists():
-            raise forms.ValidationError('Email already registered')
+        if email:
+            email = email.strip().lower()
+            if User.objects.filter(email__iexact=email).exists():
+                raise forms.ValidationError('Email already registered')
+            self.cleaned_data['email'] = email
         return email
 
     def save(self, commit=True):

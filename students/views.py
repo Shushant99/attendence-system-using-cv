@@ -3,15 +3,36 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from .models import Student, ClassRoom, Teacher
 from .forms import StudentForm, ClassRoomForm, TeacherForm
-
+import secrets
 from django.contrib import messages
 from .encoding_utils import create_encodings_for_student
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from accounts.permissions import admin_required, teacher_required
-
+from django.contrib.auth import login
+from .forms import TeacherPasswordChangeForm
+from django.contrib.auth import login as auth_login
 User = get_user_model()
 
+
+@admin_required
+def teacher_impersonate(request, pk):
+    teacher = get_object_or_404(Teacher, pk=pk)
+    request.session['impersonator_id'] = request.user.pk
+    auth_login(request, teacher.user, backend='django.contrib.auth.backends.ModelBackend')
+    messages.warning(request, f"You are now impersonating {teacher.user.get_full_name()}.")
+    return redirect('accounts:dashboard')
+
+@login_required
+def impersonate_stop(request):
+    impersonator_id = request.session.get('impersonator_id')
+    if not impersonator_id:
+        return redirect('accounts:dashboard')
+    admin_user = get_object_or_404(User, pk=impersonator_id)
+    del request.session['impersonator_id']
+    auth_login(request, admin_user, backend='django.contrib.auth.backends.ModelBackend')
+    messages.success(request, "Returned to your admin account.")
+    return redirect('students:teacher_list')
 
 @login_required
 def classroom_list(request):
@@ -25,6 +46,19 @@ def classroom_list(request):
             classrooms = ClassRoom.objects.none()
     return render(request, 'students/classroom_list.html', {'classrooms': classrooms})
 
+@admin_required
+def teacher_change_password(request, pk):
+    teacher = get_object_or_404(Teacher, pk=pk)
+    form = TeacherPasswordChangeForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        teacher.user.set_password(form.cleaned_data['new_password'])
+        teacher.user.save()
+        messages.success(request, f"Password updated for {teacher.user.get_full_name()}.")
+        return redirect('students:teacher_list')
+    return render(request, 'students/teacher_change_password.html', {
+        'form': form,
+        'teacher': teacher
+    })
 @admin_required
 def teacher_assign_classrooms(request, pk):
     """Admin can assign/update classrooms for a teacher."""
@@ -183,10 +217,11 @@ def teacher_create(request):
                 return render(request, 'students/teacher_form.html', {'form': form, 'title': 'Add New Teacher'})
 
             # 1) Create User
+            temp_password = secrets.token_urlsafe(12)
             user = User.objects.create_user(
                 username=username,
                 email=email,
-                password='TempPass@123',  # temporary password
+                password=temp_password,
                 first_name=first_name,
                 last_name=last_name,
             )
@@ -197,11 +232,7 @@ def teacher_create(request):
             teacher.user = user
             teacher.save()
 
-            messages.success(
-                request,
-                f'Teacher {user.get_full_name() or user.username} added. '
-                f'Username: {username}, Temp password: TempPass@123'
-            )
+            messages.success(request, f"Teacher created. Temporary password: {temp_password}")
             return redirect('students:teacher_list')
     else:
         form = TeacherForm()

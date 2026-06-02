@@ -16,6 +16,16 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    {% if request.session.impersonator_id %}
+<div style="background:#f59e0b;color:#000;text-align:center;padding:8px;font-weight:500;">
+  ⚠️ You are impersonating <strong>{{ request.user.get_full_name }}</strong>
+  &nbsp;|&nbsp;
+  <a href="{% url 'students:impersonate_stop' %}" style="color:#000;text-decoration:underline;">
+    Stop Impersonating
+  </a>
+</div>
+{% endif %}
+
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
