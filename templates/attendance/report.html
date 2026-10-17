@@ -10,6 +10,11 @@
             <p class="text-muted">{{ session.date|date:"d M Y" }} | {{ session.classroom.name }}</p>
         </div>
         <div class="col-md-4 text-end">
+            {% if request.user.is_admin or request.user.is_teacher %}
+                <a href="{% url 'attendance:attendance_detail' session.id %}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Edit Attendance
+                </a>
+            {% endif %}
             <button class="btn btn-secondary" onclick="window.print()">
                 <i class="fas fa-print"></i> Print
             </button>

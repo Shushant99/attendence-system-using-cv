@@ -19,7 +19,7 @@ class Student(models.Model):
     roll_no = models.CharField(max_length=20, unique=True, db_index=True)
     name = models.CharField(max_length=100)
     classroom = models.ForeignKey(ClassRoom, on_delete=models.CASCADE, related_name='students')
-    photo = models.ImageField(upload_to='student_photos/')
+    photo = models.ImageField(upload_to='student_photos/', blank=True)
 
     class Meta:
         ordering = ['roll_no']

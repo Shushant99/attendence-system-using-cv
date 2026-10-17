@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -13,6 +15,27 @@ from django.contrib.auth import login
 from .forms import TeacherPasswordChangeForm
 from django.contrib.auth import login as auth_login
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+
+def _generate_student_embedding(request, student):
+    try:
+        generated = create_encodings_for_student(student)
+    except OSError:
+        logger.exception("Could not delete source photo for student %s", student.pk)
+        messages.error(
+            request,
+            'The face embedding was generated, but the registered photo could not be deleted.',
+        )
+        return
+
+    if generated:
+        messages.success(request, 'Face embedding generated and registered photo deleted.')
+    else:
+        messages.warning(
+            request,
+            'Face embedding generation failed. The registered photo was kept.',
+        )
 
 
 @admin_required
@@ -139,17 +162,7 @@ def student_create(request):
         form = StudentForm(request.POST, request.FILES)
         if form.is_valid():
             student = form.save()
-            print(f"\n[STUDENT SAVE] ID: {student.id}, Photo: {student.photo}")
-            
-            try:
-                print(f"[ENCODING] Calling create_encodings_for_student({student.id})")
-                create_encodings_for_student(student)
-                print(f"[ENCODING] Success!")
-            except Exception as e:
-                print(f"[ENCODING ERROR] {e}")
-                import traceback
-                traceback.print_exc()
-            
+            _generate_student_embedding(request, student)
             messages.success(request, 'Student added successfully!')
             return redirect('students:student_list')
     else:
@@ -165,17 +178,8 @@ def student_update(request, pk):
         form = StudentForm(request.POST, request.FILES, instance=student)
         if form.is_valid():
             student = form.save()
-            print(f"\n[STUDENT UPDATE] ID: {student.id}, Photo: {student.photo}")
-            
-            try:
-                print(f"[ENCODING] Calling create_encodings_for_student({student.id})")
-                create_encodings_for_student(student)
-                print(f"[ENCODING] Success!")
-            except Exception as e:
-                print(f"[ENCODING ERROR] {e}")
-                import traceback
-                traceback.print_exc()
-            
+            if student.photo:
+                _generate_student_embedding(request, student)
             messages.success(request, 'Student updated successfully!')
             return redirect('students:student_list')
     else:

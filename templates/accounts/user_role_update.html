@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Change User Role - Smart Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <div class="card mx-auto" style="max-width: 600px;">
+        <div class="card-header">
+            <h1 class="h4 mb-0"><i class="fas fa-user-tag"></i> Change User Role</h1>
+        </div>
+        <div class="card-body">
+            <p>Choose a role for <strong>{{ user.username }}</strong>.</p>
+            <form method="post">
+                {% csrf_token %}
+                <label for="role" class="form-label">Role</label>
+                <select id="role" name="role" class="form-select mb-3" required>
+                    {% for value, label in role_choices %}
+                    <option value="{{ value }}" {% if user.role == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save role</button>
+                    <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

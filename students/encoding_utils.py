@@ -6,6 +6,10 @@ from attendance.face_utils import build_embedding_for_student
 def create_encodings_for_student(student):
     """
     Build DeepFace embeddings for a student's main photo.
-    Called after saving a student with a photo.
+    Delete the source photo only after the embedding has been saved successfully.
     """
-    build_embedding_for_student(student)
+    if not build_embedding_for_student(student):
+        return False
+
+    student.photo.delete(save=True)
+    return True

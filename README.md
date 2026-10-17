@@ -6,6 +6,7 @@ A web-based attendance system that uses real-time webcam-based face recognition 
 
 - **Automated Face Recognition**: Real-time facial recognition to mark attendance
 - **Student Management**: Manage student data with classroom mapping
+- **Photo Privacy**: Student photos are deleted after their face embeddings are generated
 - **Multi-user Support**: Separate portals for admins and teachers
 - **Live Camera Integration**: Direct webcam feed for attendance capture
 - **Manual Adjustments**: Teachers can manually edit attendance records
@@ -164,7 +165,7 @@ attendence-system-using-cv/
 - `roll_no`: Student roll number (unique)
 - `name`: Student name
 - `classroom`: Foreign key to ClassRoom
-- `photo`: Student photo for face recognition
+- `photo`: Temporary student photo used to generate the face embedding; deleted after successful generation
 
 ### Classroom
 

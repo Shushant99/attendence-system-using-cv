@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import StreamingHttpResponse, JsonResponse, HttpResponse
+from django.http import Http404, StreamingHttpResponse, JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
 from django.db import transaction
@@ -158,16 +158,23 @@ def end_attendance(request, session_id):
         messages.error(request, "Error ending attendance session")
         return redirect("attendance:session_report_list")
 
-@login_required
+@teacher_required
 def attendance_detail(request, session_id):
     """View attendance records for a session."""
     try:
-        session = get_object_or_404(AttendanceSession, id=session_id)
+        sessions = AttendanceSession.objects.all()
+        if not request.user.is_admin():
+            sessions = sessions.filter(classroom__teachers__user=request.user)
+        session = get_object_or_404(sessions.distinct(), id=session_id)
         records = session.records.select_related("student").all()
         return render(
             request,
             "attendance/attendance_list.html",
-            {"session": session, "records": records},
+            {
+                "session": session,
+                "records": records,
+                "status_choices": AttendanceRecord.STATUS_CHOICES,
+            },
         )
     except Exception as e:
         logger.error(f"Error in attendance_detail: {e}")
@@ -175,7 +182,7 @@ def attendance_detail(request, session_id):
         return redirect("attendance:session_report_list")
 
 
-@login_required
+@teacher_required
 def update_record_status(request, record_id):
     """Update attendance status for a student."""
     try:
@@ -184,7 +191,10 @@ def update_record_status(request, record_id):
             if status not in dict(AttendanceRecord.STATUS_CHOICES):
                 return JsonResponse({"success": False, "error": "Invalid status"}, status=400)
 
-            record = get_object_or_404(AttendanceRecord, id=record_id)
+            records = AttendanceRecord.objects.all()
+            if not request.user.is_admin():
+                records = records.filter(session__classroom__teachers__user=request.user)
+            record = get_object_or_404(records.distinct(), id=record_id)
             old_status = record.status
             record.status = status
             record.marked_by = request.user
@@ -193,6 +203,8 @@ def update_record_status(request, record_id):
             logger.info(f"Updated attendance record {record_id}: {old_status} -> {status} by {request.user.username}")
             return JsonResponse({"success": True})
         return JsonResponse({"success": False, "error": "Invalid request method"}, status=400)
+    except Http404:
+        return JsonResponse({"success": False, "error": "Attendance record not found"}, status=404)
     except Exception as e:
         logger.error(f"Error updating record status: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)
@@ -485,4 +497,3 @@ def analytics_api_data(request):
     except Exception as e:
         logger.error(f"Error in analytics_api_data: {e}")
         return JsonResponse({'status': 'error', 'message': str(e)})
-

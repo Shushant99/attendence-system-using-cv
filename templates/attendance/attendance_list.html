@@ -25,6 +25,7 @@
                         <th><i class="fas fa-id-card"></i> Roll No</th>
                         <th><i class="fas fa-door-open"></i> Classroom</th>
                         <th><i class="fas fa-check"></i> Status</th>
+                        <th>Update</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -34,11 +35,27 @@
                             <td>{{ record.student.roll_no }}</td>
                             <td>{{ record.student.classroom.name }}</td>
                             <td>
-                                {% if record.status == 'PRESENT' %}
-                                    <span class="badge bg-success"><i class="fas fa-check"></i> Present</span>
-                                {% else %}
-                                    <span class="badge bg-danger"><i class="fas fa-times"></i> Absent</span>
-                                {% endif %}
+                                <span data-status="{{ record.status }}" class="badge attendance-status
+                                    {% if record.status == 'PRESENT' %}bg-success
+                                    {% elif record.status == 'ABSENT' %}bg-danger
+                                    {% elif record.status == 'LATE' %}bg-warning text-dark
+                                    {% else %}bg-info{% endif %}">
+                                    {{ record.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <form class="attendance-status-form d-flex gap-2"
+                                      method="post"
+                                      action="{% url 'attendance:update_record_status' record.id %}">
+                                    {% csrf_token %}
+                                    <select name="status" class="form-select form-select-sm" aria-label="Status for {{ record.student.name }}">
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if record.status == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                </form>
+                                <small class="status-feedback" role="status"></small>
                             </td>
                         </tr>
                     {% endfor %}
@@ -62,14 +79,14 @@
                         <div class="col-md-4">
                             <div class="text-center">
                                 {% load template_filters %}
-                                <h3 class="text-success">{{ records|present_count }}</h3>
+                                <h3 id="present-count" class="text-success">{{ records|present_count }}</h3>
                                 <p>Present</p>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="text-center">
                                 {% load template_filters %}
-                                <h3 class="text-danger">{{ records|absent_count }}</h3>
+                                <h3 id="absent-count" class="text-danger">{{ records|absent_count }}</h3>
                                 <p>Absent</p>
                             </div>
                         </div>
@@ -79,4 +96,42 @@
         </div>
     </div>
 </div>
+<script>
+  document.querySelectorAll('.attendance-status-form').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = form.querySelector('button[type="submit"]');
+      const feedback = form.nextElementSibling;
+      button.disabled = true;
+      feedback.textContent = 'Saving...';
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          body: new FormData(form)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Could not update attendance.');
+        }
+        const status = form.querySelector('[name="status"]');
+        const badge = form.closest('tr').querySelector('.attendance-status');
+        badge.textContent = status.options[status.selectedIndex].text;
+        badge.dataset.status = status.value;
+        badge.className = `badge attendance-status bg-${status.value === 'PRESENT' ? 'success' : status.value === 'ABSENT' ? 'danger' : status.value === 'LATE' ? 'warning text-dark' : 'info'}`;
+        document.getElementById('present-count').textContent =
+          document.querySelectorAll('.attendance-status[data-status="PRESENT"]').length;
+        document.getElementById('absent-count').textContent =
+          document.querySelectorAll('.attendance-status[data-status="ABSENT"]').length;
+        feedback.textContent = 'Saved';
+      } catch (error) {
+        feedback.textContent = error.message;
+        feedback.classList.add('text-danger');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+</script>
 {% endblock %}
