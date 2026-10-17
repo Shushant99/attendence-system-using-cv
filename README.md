@@ -15,9 +15,9 @@ A web-based attendance system that uses real-time webcam-based face recognition 
 
 ## 📋 Prerequisites
 
-- **Python**: 3.8+ (3.10+ recommended)
+- **Python**: 3.10+ (3.12 recommended)
 - **Webcam**: For face recognition
-- **Database**: SQLite (default) or PostgreSQL
+- **Database**: SQLite (configured by default)
 - **OS Support**: Windows, macOS, Linux
 
 ## 🔧 Installation & Setup
@@ -47,28 +47,37 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Environment Configuration (Optional)
+### 4. Environment Configuration (Required)
 
-Create a `.env` file in the project root for environment-specific settings:
+Create a `.env` file in the project root. Generate a Django secret key with:
+
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Put the generated key and local development settings in `.env`:
 
 ```env
-DEBUG=True
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///db.sqlite3
+DJANGO_SECRET_KEY=paste-the-generated-key-here
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:8000
 ```
+
+`DJANGO_DEBUG=True` is for local development only. Keep `.env` private; it is ignored by Git.
 
 ### 5. Database Setup
 
+Apply the migrations included in the repository:
+
 ```bash
-# Create database tables
-python manage.py makemigrations
 python manage.py migrate
+```
 
-# Create superuser (admin account)
+Create a superuser (admin account):
+
+```bash
 python manage.py createsuperuser
-
-# (Optional) Load sample data
-python manage.py loaddata sample_data  # if sample data exists
 ```
 
 ### 6. Run Development Server
@@ -249,32 +258,33 @@ python manage.py createsuperuser
 ### Missing Dependencies
 
 ```bash
-# Reinstall requirements
-pip install -r requirements.txt --force-reinstall
+# Install or restore project dependencies
+python -m pip install -r requirements.txt
 ```
 
 ## 🚀 Deployment
 
 ### Production Setup
 
-1. Set `DEBUG=False` in settings.py
-2. Configure `ALLOWED_HOSTS` with your domain
-3. Use PostgreSQL instead of SQLite
-4. Set secure `SECRET_KEY`
-5. Use gunicorn as WSGI server:
+1. Set `DJANGO_DEBUG=False` in the deployment environment.
+2. Set `DJANGO_SECRET_KEY` to a unique, securely generated value.
+3. Set `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS` for your domain.
+4. Configure HTTPS and review Django's deployment checklist.
+5. The project currently uses SQLite; update `DATABASES` in `smart_attendance/settings.py` before deploying with another database.
+6. Install and use gunicorn as the WSGI server:
    ```bash
    gunicorn smart_attendance.wsgi
    ```
 
 ### Environment Variables
 
-Create `.env` file and load with `python-dotenv`:
+The application reads these environment variables (from `.env` locally or the deployment environment):
 
-```
-DEBUG=False
-SECRET_KEY=your-very-secure-key
-ALLOWED_HOSTS=example.com,www.example.com
-DATABASE_URL=postgresql://user:password@localhost/dbname
+```env
+DJANGO_SECRET_KEY=<secure-secret>
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=example.com,www.example.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://example.com,https://www.example.com
 ```
 
 ## 📝 API Endpoints

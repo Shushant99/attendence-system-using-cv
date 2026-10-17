@@ -93,27 +93,3 @@
   </div>
 </div>
 {% endblock %}
-
-{% block extra_css %}
-<style>
-  .dashboard-card {
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
-  }
-
-  .dashboard-card:hover {
-    border-color: var(--secondary);
-    background: linear-gradient(135deg,
-        rgba(59, 130, 246, 0.02) 0%,
-        rgba(16, 185, 129, 0.02) 100%);
-  }
-
-  .dashboard-card i {
-    background: linear-gradient(135deg, currentColor 0%, currentColor 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    opacity: 1;
-  }
-</style>
-{% endblock %}
